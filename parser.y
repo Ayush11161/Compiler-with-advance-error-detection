@@ -16,6 +16,8 @@ typedef struct {
     int scope;
     int is_initialized;
     int is_used;
+    int is_function;
+    int is_parameter;
 } Symbol;
 
 #define MAX_SYMBOLS 1000
@@ -27,16 +29,20 @@ int error_count = 0;
 void report_error(const char* msg, int line, int col);
 
 // Function to add symbol to table
-void add_symbol(char* name, int type, int scope) {
+void add_symbol(char* name, int type, int scope, int is_function) {
     if (symbol_count >= MAX_SYMBOLS) {
         report_error("Symbol table overflow", 0, 0);
         return;
     }
-    symbol_table[symbol_count].name = strdup(name);
-    symbol_table[symbol_count].type = type;
-    symbol_table[symbol_count].scope = scope;
-    symbol_table[symbol_count].is_initialized = 0;
-    symbol_table[symbol_count].is_used = 0;
+    symbol_table[symbol_count] = (Symbol){
+        .name = strdup(name),
+        .type = type,
+        .scope = scope,
+        .is_initialized = 0,
+        .is_used = 0,
+        .is_function = is_function,
+        .is_parameter = 0
+    };
     symbol_count++;
 }
 
@@ -44,11 +50,20 @@ void add_symbol(char* name, int type, int scope) {
 Symbol* find_symbol(char* name, int scope) {
     for (int i = symbol_count - 1; i >= 0; i--) {
         if (strcmp(symbol_table[i].name, name) == 0 && 
-            symbol_table[i].scope <= scope) {
+            (symbol_table[i].scope == scope || symbol_table[i].scope < scope)) {
             return &symbol_table[i];
         }
     }
     return NULL;
+}
+
+// Function to check for unused variables (but not functions or parameters)
+void check_unused_symbols() {
+    for (int i = 0; i < symbol_count; i++) {
+        if (!symbol_table[i].is_function && !symbol_table[i].is_parameter && !symbol_table[i].is_used) {
+            report_error("Unused variable", line_num, 0);
+        }
+    }
 }
 %}
 
@@ -132,7 +147,7 @@ function_definition
         if (sym != NULL) {
             report_error("Function redefinition", line_num, 0);
         } else {
-            add_symbol($2, $1, 0);
+            add_symbol($2, $1, 0, 1);  // Mark as function
         }
         $$ = $1;
     }
@@ -147,7 +162,16 @@ parameter_list
 parameter_declaration
     : type_specifier IDENTIFIER
     {
-        add_symbol($2, $1, 1);  // Add parameter to symbol table
+        // Add parameter to symbol table and mark it as initialized
+        Symbol* sym = find_symbol($2, 1);
+        if (sym != NULL) {
+            report_error("Parameter redefinition", line_num, 0);
+        } else {
+            add_symbol($2, $1, 1, 0);  // Add parameter to symbol table
+            symbol_table[symbol_count-1].is_initialized = 1;  // Mark as initialized
+            symbol_table[symbol_count-1].is_parameter = 1;    // Mark as parameter
+            symbol_table[symbol_count-1].is_used = 1;         // Mark as used
+        }
         $$ = $1;
     }
     ;
@@ -167,7 +191,7 @@ declaration
         if (sym != NULL) {
             report_error("Variable redefinition", line_num, 0);
         } else {
-            add_symbol($2, $1, 0);
+            add_symbol($2, $1, 0, 0);  // Mark as variable
         }
         $$ = $1;
     }
@@ -178,7 +202,7 @@ declaration
         if (sym != NULL) {
             report_error("Variable redefinition", line_num, 0);
         } else {
-            add_symbol($2, $1, 0);
+            add_symbol($2, $1, 0, 0);  // Mark as variable
             if ($1 != $4) {
                 report_error("Type mismatch in assignment", line_num, 0);
             }
@@ -310,13 +334,17 @@ postfix_expression
 primary_expression
     : IDENTIFIER
     {
-        // Check if variable is declared and initialized
-        Symbol* sym = find_symbol($1, 0);
+        // Check if variable is declared
+        Symbol* sym = find_symbol($1, 1);  // First check in current scope (1)
+        if (sym == NULL) {
+            sym = find_symbol($1, 0);      // Then check in global scope (0)
+        }
         if (sym == NULL) {
             report_error("Undefined variable", line_num, 0);
         } else {
             sym->is_used = 1;
-            if (!sym->is_initialized) {
+            // Only check initialization for non-function and non-parameter symbols
+            if (!sym->is_function && !sym->is_parameter && !sym->is_initialized) {
                 report_error("Uninitialized variable", line_num, 0);
             }
         }
@@ -338,6 +366,7 @@ argument_expression_list
 %%
 
 void report_error(const char* msg, int line, int col) {
+    (void)col;  // Explicitly acknowledge unused parameter
     fprintf(stderr, "Error at line %d: %s\n", line, msg);
     error_count++;
 }
@@ -358,11 +387,7 @@ int main(int argc, char** argv) {
     yyparse();
     
     // Report unused variables
-    for (int i = 0; i < symbol_count; i++) {
-        if (!symbol_table[i].is_used) {
-            fprintf(stderr, "Warning: Unused variable '%s'\n", symbol_table[i].name);
-        }
-    }
+    check_unused_symbols();
     
     return error_count;
 } 
