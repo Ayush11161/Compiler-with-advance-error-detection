@@ -23,8 +23,6 @@ typedef struct {
 #define MAX_SYMBOLS 1000
 Symbol symbol_table[MAX_SYMBOLS];
 int symbol_count = 0;
-
-// Error tracking
 int error_count = 0;
 void report_error(const char* msg, int line, int col);
 
@@ -35,13 +33,8 @@ void add_symbol(char* name, int type, int scope, int is_function) {
         return;
     }
     symbol_table[symbol_count] = (Symbol){
-        .name = strdup(name),
-        .type = type,
-        .scope = scope,
-        .is_initialized = 0,
-        .is_used = 0,
-        .is_function = is_function,
-        .is_parameter = 0
+        .name = strdup(name), .type = type, .scope = scope, 
+        .is_initialized = 0, .is_used = 0, .is_function = is_function, .is_parameter = 0
     };
     symbol_count++;
 }
@@ -60,70 +53,34 @@ Symbol* find_symbol(char* name, int scope) {
 // Function to check for unused variables (but not functions or parameters)
 void check_unused_symbols() {
     for (int i = 0; i < symbol_count; i++) {
-        if (!symbol_table[i].is_function && !symbol_table[i].is_parameter && !symbol_table[i].is_used) {
+        if (!symbol_table[i].is_function && !symbol_table[i].is_parameter && !symbol_table[i].is_used)
             report_error("Unused variable", line_num, 0);
-        }
     }
 }
 %}
 
-%union {
-    int int_val;
-    float float_val;
-    char char_val;
-    char* string_val;
-}
+%union { int int_val; float float_val; char char_val; char* string_val; }
 
-%token <string_val> IDENTIFIER
-%token <int_val> INTEGER_LITERAL
-%token <float_val> FLOAT_LITERAL
-%token <char_val> CHAR_LITERAL
-%token <string_val> STRING_LITERAL
+%token <string_val> IDENTIFIER <int_val> INTEGER_LITERAL <float_val> FLOAT_LITERAL 
+%token <char_val> CHAR_LITERAL <string_val> STRING_LITERAL
 
 %token INT CHAR VOID FLOAT_TYPE
-%token IF ELSE WHILE FOR RETURN
-%token STRUCT TYPEDEF CONST STATIC EXTERN SIZEOF
-%token PLUS MINUS MULTIPLY DIVIDE MODULO
-%token ASSIGN EQUAL NOT_EQUAL
-%token LESS LESS_EQUAL GREATER GREATER_EQUAL
-%token AND OR NOT
-%token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT
-%token LEFT_SHIFT RIGHT_SHIFT
-%token INCREMENT DECREMENT
-%token ARROW DOT
-%token SEMICOLON COMMA
-%token LEFT_PAREN RIGHT_PAREN
-%token LEFT_BRACE RIGHT_BRACE
-%token LEFT_BRACKET RIGHT_BRACKET
+%token IF ELSE WHILE FOR RETURN STRUCT TYPEDEF CONST STATIC EXTERN SIZEOF
+%token PLUS MINUS MULTIPLY DIVIDE MODULO ASSIGN EQUAL NOT_EQUAL
+%token LESS LESS_EQUAL GREATER GREATER_EQUAL AND OR NOT
+%token BITWISE_AND BITWISE_OR BITWISE_XOR BITWISE_NOT LEFT_SHIFT RIGHT_SHIFT
+%token INCREMENT DECREMENT ARROW DOT SEMICOLON COMMA
+%token LEFT_PAREN RIGHT_PAREN LEFT_BRACE RIGHT_BRACE LEFT_BRACKET RIGHT_BRACKET
 %token COLON QUESTION
 
-%type <int_val> type_specifier
-%type <int_val> expression
-%type <int_val> statement
-%type <int_val> compound_statement
-%type <int_val> declaration
-%type <int_val> function_definition
-%type <int_val> external_declaration
-%type <int_val> program
-%type <int_val> declaration_list
-%type <int_val> statement_list
-%type <int_val> expression_statement
-%type <int_val> selection_statement
-%type <int_val> iteration_statement
-%type <int_val> jump_statement
-%type <int_val> assignment_expression
-%type <int_val> logical_or_expression
-%type <int_val> logical_and_expression
-%type <int_val> equality_expression
-%type <int_val> relational_expression
-%type <int_val> additive_expression
-%type <int_val> multiplicative_expression
-%type <int_val> unary_expression
-%type <int_val> postfix_expression
+%type <int_val> type_specifier expression statement compound_statement declaration
+%type <int_val> function_definition external_declaration program declaration_list
+%type <int_val> statement_list expression_statement selection_statement
+%type <int_val> iteration_statement jump_statement
+%type <int_val> assignment_expression logical_or_expression logical_and_expression
+%type <int_val> equality_expression relational_expression additive_expression
+%type <int_val> multiplicative_expression unary_expression postfix_expression
 %type <int_val> primary_expression
-%type <int_val> parameter_list
-%type <int_val> parameter_declaration
-%type <int_val> argument_expression_list
 
 %start program
 
@@ -135,52 +92,20 @@ program
     ;
 
 external_declaration
-    : function_definition { $$ = $1; }
-    | declaration { $$ = $1; }
-    ;
-
-function_definition
-    : type_specifier IDENTIFIER LEFT_PAREN parameter_list RIGHT_PAREN compound_statement
-    {
-        // Check for function redefinition
-        Symbol* sym = find_symbol($2, 0);
-        if (sym != NULL) {
-            report_error("Function redefinition", line_num, 0);
-        } else {
-            add_symbol($2, $1, 0, 1);  // Mark as function
-        }
-        $$ = $1;
-    }
-    ;
-
-parameter_list
-    : parameter_declaration { $$ = $1; }
-    | parameter_list COMMA parameter_declaration { $$ = $3; }
-    | /* empty */ { $$ = 0; }
-    ;
-
-parameter_declaration
-    : type_specifier IDENTIFIER
-    {
-        // Add parameter to symbol table and mark it as initialized
-        Symbol* sym = find_symbol($2, 1);
-        if (sym != NULL) {
-            report_error("Parameter redefinition", line_num, 0);
-        } else {
-            add_symbol($2, $1, 1, 0);  // Add parameter to symbol table
-            symbol_table[symbol_count-1].is_initialized = 1;  // Mark as initialized
-            symbol_table[symbol_count-1].is_parameter = 1;    // Mark as parameter
-            symbol_table[symbol_count-1].is_used = 1;         // Mark as used
-        }
-        $$ = $1;
-    }
+    : function_definition { $$ = $1; } | declaration { $$ = $1; }
     ;
 
 type_specifier
-    : INT     { $$ = 1; }
-    | CHAR    { $$ = 2; }
-    | VOID    { $$ = 3; }
-    | FLOAT_TYPE { $$ = 4; }
+    : INT { $$ = 1; } | CHAR { $$ = 2; } | VOID { $$ = 3; } | FLOAT_TYPE { $$ = 4; }
+    ;
+
+// Only allow main function
+function_definition
+    : type_specifier IDENTIFIER LEFT_PAREN RIGHT_PAREN compound_statement {
+        if (strcmp($2, "main") != 0) 
+            report_error("Only main function is allowed", line_num, 0);
+        $$ = $1;
+    }
     ;
 
 declaration
@@ -190,21 +115,33 @@ declaration
         Symbol* sym = find_symbol($2, 0);
         if (sym != NULL) {
             report_error("Variable redefinition", line_num, 0);
+            // Continue parsing even if variable is redefined
         } else {
-            add_symbol($2, $1, 0, 0);  // Mark as variable
+            add_symbol($2, $1, 0, 0);  // Add variable
         }
         $$ = $1;
     }
     | type_specifier IDENTIFIER ASSIGN expression SEMICOLON
     {
-        // Check for variable redefinition and type compatibility
         Symbol* sym = find_symbol($2, 0);
         if (sym != NULL) {
             report_error("Variable redefinition", line_num, 0);
         } else {
             add_symbol($2, $1, 0, 0);  // Mark as variable
-            if ($1 != $4) {
-                report_error("Type mismatch in assignment", line_num, 0);
+            // Mark the symbol as initialized
+            sym = find_symbol($2, 0);
+            if (sym) {
+                sym->is_initialized = 1;
+                sym->is_used = 1;
+            }
+            
+            if ($4 != 0 && $1 != $4) {
+                if ($1 == 1 && $4 == 4)      // int = float
+                    report_error("Type mismatch: assigning float to int", line_num, 0);
+                else if ($1 == 4 && $4 == 1) // float = int, allowed with implicit conversion
+                    {}  
+                else
+                    report_error("Type mismatch in assignment", line_num, 0);
             }
         }
         $$ = $1;
@@ -216,28 +153,20 @@ compound_statement
     ;
 
 declaration_list
-    : declaration { $$ = $1; }
-    | declaration_list declaration { $$ = $2; }
-    | /* empty */ { $$ = 0; }
+    : declaration { $$ = $1; } | declaration_list declaration { $$ = $2; } | /* empty */ { $$ = 0; }
     ;
 
 statement_list
-    : statement { $$ = $1; }
-    | statement_list statement { $$ = $2; }
-    | /* empty */ { $$ = 0; }
+    : statement { $$ = $1; } | statement_list statement { $$ = $2; } | /* empty */ { $$ = 0; }
     ;
 
 statement
-    : expression_statement { $$ = $1; }
-    | compound_statement { $$ = $1; }
-    | selection_statement { $$ = $1; }
-    | iteration_statement { $$ = $1; }
-    | jump_statement { $$ = $1; }
+    : expression_statement { $$ = $1; } | compound_statement { $$ = $1; } 
+    | selection_statement { $$ = $1; } | iteration_statement { $$ = $1; } | jump_statement { $$ = $1; }
     ;
 
 expression_statement
-    : expression SEMICOLON { $$ = $1; }
-    | SEMICOLON { $$ = 0; }
+    : expression SEMICOLON { $$ = $1; } | SEMICOLON { $$ = 0; }
     ;
 
 selection_statement
@@ -247,29 +176,32 @@ selection_statement
 
 iteration_statement
     : WHILE LEFT_PAREN expression RIGHT_PAREN statement { $$ = $3; }
-    | FOR LEFT_PAREN expression_statement expression_statement RIGHT_PAREN statement { $$ = 0; }
     | FOR LEFT_PAREN expression_statement expression_statement expression RIGHT_PAREN statement { $$ = $5; }
     ;
 
 jump_statement
-    : RETURN expression SEMICOLON { $$ = $2; }
-    | RETURN SEMICOLON { $$ = 0; }
+    : RETURN expression SEMICOLON { $$ = $2; } | RETURN SEMICOLON { $$ = 0; }
     ;
 
 expression
-    : assignment_expression { $$ = $1; }
-    | expression COMMA assignment_expression { $$ = $3; }
+    : assignment_expression { $$ = $1; } | expression COMMA assignment_expression { $$ = $3; }
     ;
 
 assignment_expression
     : logical_or_expression { $$ = $1; }
-    | IDENTIFIER ASSIGN assignment_expression
-    {
-        // Check if variable is declared and initialized
+    | IDENTIFIER ASSIGN assignment_expression {
         Symbol* sym = find_symbol($1, 0);
         if (sym == NULL) {
             report_error("Undefined variable", line_num, 0);
         } else {
+            if (sym->type != $3 && sym->type != 0 && $3 != 0) {
+                if (sym->type == 1 && $3 == 4)      // int = float
+                    report_error("Type mismatch: assigning float to int", line_num, 0);
+                else if (sym->type == 4 && $3 == 1) // float = int, allowed with implicit conversion
+                    {}  
+                else
+                    report_error("Type mismatch in assignment", line_num, 0);
+            }
             sym->is_initialized = 1;
         }
         $$ = $3;
@@ -315,54 +247,34 @@ multiplicative_expression
 
 unary_expression
     : postfix_expression { $$ = $1; }
-    | PLUS unary_expression { $$ = $2; }
-    | MINUS unary_expression { $$ = $2; }
-    | NOT unary_expression { $$ = $2; }
-    | BITWISE_NOT unary_expression { $$ = $2; }
+    | PLUS unary_expression { $$ = $2; } | MINUS unary_expression { $$ = $2; } 
+    | NOT unary_expression { $$ = $2; } | BITWISE_NOT unary_expression { $$ = $2; }
     ;
 
 postfix_expression
     : primary_expression { $$ = $1; }
     | postfix_expression LEFT_BRACKET expression RIGHT_BRACKET { $$ = $1; }
-    | postfix_expression LEFT_PAREN argument_expression_list RIGHT_PAREN { $$ = $1; }
+    | postfix_expression LEFT_PAREN RIGHT_PAREN { $$ = $1; }
     | postfix_expression DOT IDENTIFIER { $$ = $1; }
     | postfix_expression ARROW IDENTIFIER { $$ = $1; }
-    | postfix_expression INCREMENT { $$ = $1; }
-    | postfix_expression DECREMENT { $$ = $1; }
+    | postfix_expression INCREMENT { $$ = $1; } | postfix_expression DECREMENT { $$ = $1; }
     ;
 
 primary_expression
-    : IDENTIFIER
-    {
-        // Check if variable is declared
-        Symbol* sym = find_symbol($1, 1);  // First check in current scope (1)
-        if (sym == NULL) {
-            sym = find_symbol($1, 0);      // Then check in global scope (0)
-        }
+    : IDENTIFIER {
+        Symbol* sym = find_symbol($1, 0);
         if (sym == NULL) {
             report_error("Undefined variable", line_num, 0);
         } else {
             sym->is_used = 1;
-            // Only check initialization for non-function and non-parameter symbols
-            if (!sym->is_function && !sym->is_parameter && !sym->is_initialized) {
-                report_error("Uninitialized variable", line_num, 0);
-            }
+            if (!sym->is_initialized) report_error("Uninitialized variable", line_num, 0);
         }
         $$ = sym ? sym->type : 0;
     }
-    | INTEGER_LITERAL { $$ = 1; }  // INT type
-    | FLOAT_LITERAL { $$ = 4; }    // FLOAT type
-    | CHAR_LITERAL { $$ = 2; }     // CHAR type
-    | STRING_LITERAL { $$ = 2; }   // CHAR* type
+    | INTEGER_LITERAL { $$ = 1; }  /* INT type */ | FLOAT_LITERAL { $$ = 4; }    /* FLOAT type */
+    | CHAR_LITERAL { $$ = 2; }     /* CHAR type */ | STRING_LITERAL { $$ = 2; }   /* CHAR* type */
     | LEFT_PAREN expression RIGHT_PAREN { $$ = $2; }
     ;
-
-argument_expression_list
-    : assignment_expression { $$ = $1; }
-    | argument_expression_list COMMA assignment_expression { $$ = $3; }
-    | /* empty */ { $$ = 0; }
-    ;
-
 %%
 
 void report_error(const char* msg, int line, int col) {
@@ -377,17 +289,10 @@ void yyerror(const char* s) {
 }
 
 int main(int argc, char** argv) {
-    if (argc > 1) {
-        if (!(yyin = fopen(argv[1], "r"))) {
-            perror(argv[1]);
-            return 1;
-        }
+    if (argc > 1 && !(yyin = fopen(argv[1], "r"))) {
+        perror(argv[1]); return 1;
     }
-    
     yyparse();
-    
-    // Report unused variables
-    check_unused_symbols();
-    
+    check_unused_symbols(); // Report unused variables
     return error_count;
-} 
+}

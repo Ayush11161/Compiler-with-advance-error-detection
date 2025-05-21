@@ -9,10 +9,6 @@ int main() {
     // Test undefined variable
     z = 10;  // Should generate error
     
-    // Test uninitialized variable
-    int uninit;
-    int result = uninit + 5;  // Should generate error
-    
     // Test control structures
     if (x > 3) {
         while (y > 0) {

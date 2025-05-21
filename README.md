@@ -68,6 +68,18 @@ python smart_compiler.py test.c
 
 You can also run the compiler directly:
 
+Generate Lexer and Parser C Files:
+```sh
+win_flex lexer.l
+win_bison -d parser.y
+```
+
+Compile the Project:
+```sh
+gcc lex.yy.c parser.tab.c -o compiler.exe
+```
+
+Run the Compiler:
 ```sh
 ./compiler.exe test.c
 ```
@@ -84,7 +96,7 @@ Context:     printf("%d", x);
 
 ## Extending Error Analysis
 
-- Add new error patterns and explanations in [`error_analyzer.py`](c:/Users/rawat/Desktop/Compiler%20PBL/error_analyzer.py).
+- Add new error patterns and explanations in [`error_analyzer.py`](c:/Users/rawat/Desktop/Compiler/error_analyzer.py).
 - The ML model can be retrained with more error samples for improved classification.
 
 ## License
